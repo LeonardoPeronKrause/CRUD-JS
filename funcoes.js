@@ -56,7 +56,11 @@ const exibirMenu = function() {
 const cadastrarEmpresa = function() {
     rl.question('Qual o nome da empresa? ', function(nome) {
         rl.question('Qual é o CNPJ da empresa? ', function(cnpj) {
-            rl.question('Qual é o segmento da empresa? ', function(segmento) {
+            if (!validarCNPJ(cnpj)) {
+                console.log('CNPJ inválido!');
+                return exibirMenu();
+            }
+            rl.question('Qual é o segmento da empresa? (Saúde, Comércio, Financeiro...) ', function(segmento) {
                 const empresa = {
                     nome,
                     cnpj,
@@ -70,6 +74,46 @@ const cadastrarEmpresa = function() {
             });
         });
     }        
+
+// Função para validar CNPJ
+const validarCNPJ = function(cnpj) {
+    cnpj = cnpj.replace(/[^\d]+/g, '');  // Remove todos os caracteres que não são dígitos
+
+    if (cnpj.length !== 14) return false; // Verifica se o CNPJ tem 14 números
+
+    if (/^(\d)\1+$/.test(cnpj)) return false; // Elimina CNPJs inválidos conhecidos (sequências de números iguais)
+
+    // Calcula o primeiro dígito verificador
+    let tamanho = cnpj.length - 2; 
+    let numeros = cnpj.substring(0, tamanho);
+    let digitos = cnpj.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+        soma += numeros.charAt(tamanho - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+
+    let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado != digitos.charAt(0)) return false;
+
+    // Calcula o segundo dígito verificador
+    tamanho = tamanho + 1;
+    numeros = cnpj.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+        soma += numeros.charAt(tamanho - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+
+    resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado != digitos.charAt(1)) return false;
+
+    return true;
+}
 
 // Função para editar uma empresa existente
 const editarEmpresa = function() {
@@ -89,9 +133,13 @@ const editarEmpresa = function() {
         }
 
         const empresa = empresas[idx];
-        rl.question(`Novo nome da empresa (${empresa.nome}): `, function(nome) {
-            rl.question(`Novo CNPJ da empresa (${empresa.cnpj}): `, function(cnpj) {
-                rl.question(`Novo segmento da empresa (${empresa.segmento}): `, function(segmento) {
+        rl.question(`Novo nome da empresa (${empresa.nome}) (Se você deixar em branco o nome permenecerá o atual): `, function(nome) {
+            rl.question(`Novo CNPJ da empresa (${empresa.cnpj}) (Se você deixar em branco o CNPJ permenecerá o atual): `, function(cnpj) {
+                if (cnpj && !validarCNPJ(cnpj)) {
+                    console.log('CNPJ inválido!');
+                    return exibirMenu();
+                }
+                rl.question(`Novo segmento da empresa (${empresa.segmento}) (Se você deixar em branco o segmento permenecerá o atual): `, function(segmento) {
                     empresa.nome = nome || empresa.nome;
                     empresa.cnpj = cnpj || empresa.cnpj;
                     empresa.segmento = segmento || empresa.segmento;
@@ -143,6 +191,12 @@ const excluirEmpresa = function() {
 
 // Função para fazer o backup dos dados
 const fazerBackup = function() {
+    if (empresas.length === 0) {
+        console.log('Nenhuma empresa cadastrada! Não há dados para fazer backup.');
+        exibirMenu();
+        return;
+    }
+    
     const dadosJson = JSON.stringify(empresas, null, 2); // Converte o array 'empresas' para uma string JSON formatada
     const caminhoArquivo = 'backup_empresas.json';
     fs.writeFile(caminhoArquivo, dadosJson, (err) => { // Função de callback que será chamada após a tentativa de escrita no arquivo
