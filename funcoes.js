@@ -183,9 +183,16 @@ const excluirEmpresa = function() {
             return;
         }
 
-        empresas.splice(idx, 1);
-        console.log(`Empresa ${idx + 1} excluída com sucesso!`);
-        exibirMenu();
+        rl.question(`Você tem certeza que deseja excluir a empresa ${empresas[idx].nome} da lista? (use S/N): `, function(confirmacao) {
+            if (confirmacao.toUpperCase() === 'S') {
+                empresas.splice(idx, 1);
+                console.log(`Empresa ${idx + 1} excluída com sucesso!`);
+                exibirMenu();
+            } else {
+                console.log('Empresa não excluída!');
+                exibirMenu();
+            }
+        })
     })
 }
 
